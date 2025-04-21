@@ -1,9 +1,13 @@
+use serde::{Deserialize, Serialize};
+
 use crate::block::Block;
-use crate::transaction::{self, Transaction};
-// use std::fs::File;
-// use std::io::{Read, Write};
+use crate::transaction::Transaction;
+use std::fs::File;
+use std::io::BufReader;
+
 // use serde_json;
 
+#[derive(Debug, Deserialize, Serialize)]
 pub struct Blockchain {
     pub chain: Vec<Block>,
     pub pending_transactions: Vec<Transaction>,
@@ -11,50 +15,70 @@ pub struct Blockchain {
 }
 
 impl Blockchain {
-    pub fn new(difficulty: usize) -> Self {
-        let mut blockchain = Blockchain {
-            chain: Vec::new(),
-            pending_transactions: Vec::new(),
-            difficulty,
-        };
-        blockchain.create_genesis_block();
-        blockchain
-    }
+    // pub fn new(difficulty: usize) -> Self {
+    //     let mut blockchain = Blockchain {
+    //         chain: Vec::new(),
+    //         pending_transactions: Vec::new(),
+    //         difficulty,
+    //     };
+    //     blockchain.create_genesis_block();
+    //     blockchain
+    // }
 
-    pub fn create_genesis_block(&mut self) {
-        let genesis_block = Block::new(0,
-            vec![Transaction::new("System".to_string(), "KhiemGia".to_string(), 50.00)],
-             "0".to_string());
-        self.chain.push(genesis_block);
-    }
+    // pub fn create_genesis_block(&mut self) {
+    //     let genesis_block = Block::new(0,
+    //         vec![Transaction::new("System".to_string(), "KhiemGia".to_string(), 50.00)],
+    //          "0".to_string());
+    //     self.chain.push(genesis_block);
+    // }
 
     pub fn add_transaction(&mut self, transaction: Transaction) {
+        let tx = transaction.clone();
+
+        if transaction.from != "SYSTEM" {
+            let balance = self.get_balance(&transaction.from);
+    
+            if transaction.amount > balance {
+                println!(
+                    "❌ Transaction denied: '{}' does not have enough balance (has {}, needs {}).",
+                    transaction.from, balance, transaction.amount
+                );
+                return;
+            }
+        }
+    
         self.pending_transactions.push(transaction);
+        println!(
+            "✅ Transaction accepted: {} -> {} : {}",
+            tx.from, tx.to, tx.amount
+        );
     }
 
     pub fn mine_pendding_transaction(&mut self) {
         let previous_block = self.chain.last().unwrap();
 
+        let mut transaction_data = self.pending_transactions.clone();
+
+        transaction_data.push(
+            Transaction { 
+                from: "System".to_string(), 
+                to: "KhiemGia".to_string(), 
+                amount: 1.0,
+            }
+        );
+
         let mut block = Block::new(
             previous_block.index + 1,
-            self.pending_transactions.clone(),
+            transaction_data,
             previous_block.hash.clone(),
         );
 
         block.mine_block(self.difficulty);
+
+        self.pending_transactions.clear();
+
         self.chain.push(block);
     }
-
-    // pub fn add_block(&mut self, data: String) {
-    //     let previous_block = self.chain.last().unwrap();
-    //     let mut new_block = Block::new(
-    //         previous_block.index + 1,
-    //         data,
-    //         previous_block.hash.clone(),
-    //     );
-    //     new_block.mine_block(4);
-    //     self.chain.push(new_block)
-    // }
 
     pub fn is_valid(&self) -> bool {
         for i in 1..self.chain.len() {
@@ -73,18 +97,31 @@ impl Blockchain {
         return true;
     }
 
-    // pub fn save_to_file(&self, filename: &str) {
-    //     let file = File::create(filename).expect("Unable to create file");
-    //     serde_json::to_writer(file, &self.chain).expect("Unable to write data");
-    //     println!("Blockchain saved to file.");
-    // }
+    pub fn save_to_file(&self, filename: &str) {
+        let file = File::create(filename).expect("Unable to create file");
+        serde_json::to_writer_pretty(file, &self).expect("Unable to write data");
+        println!("Blockchain saved to file.");
+    }
 
-    // pub fn load_from_file(filename: &str) -> Self {
-    //     let mut file = File::open(filename).expect("Unable to open file");
-    //     let mut content = String::new();
-    //     file.read_to_string(&mut content).expect("Unable to read data from file");
+    pub fn load_from_file(filename: &str) -> Self {
+        let file = File::open(filename).expect("Unable to open file");
+        let reader = BufReader::new(file);
+        serde_json::from_reader(reader).expect("Unable to parse file")
+    }
 
-    //     let chain: Vec<Block> = serde_json::from_str(&content).expect("Unable to parse JSON");
-    //     Blockchain { chain }
-    // }
+    pub fn get_balance(&self, address: &str) -> f64 {
+        let mut balance = 0.0;
+        for block in &self.chain {
+            for tx in &block.data {
+                if tx.from == address {
+                    balance -= tx.amount;
+                }
+                if tx.to == address {
+                    balance += tx.amount;
+                }
+            }
+        }
+        balance
+    }
+
 }

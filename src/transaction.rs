@@ -10,13 +10,13 @@ pub struct Transaction {
 
 impl Transaction {
     
-    pub fn new(from: String, to: String, amount: f64) -> Self{
-        let transaction = Transaction {
-            from,
-            to,
-            amount
-        };
-        transaction
-    }
+    // pub fn new(from: String, to: String, amount: f64) -> Self{
+    //     let transaction = Transaction {
+    //         from,
+    //         to,
+    //         amount
+    //     };
+    //     transaction
+    // }
 
 }
