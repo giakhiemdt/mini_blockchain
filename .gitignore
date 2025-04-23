@@ -1,2 +1,6 @@
 /target
 blockchain.json
+.env
+.$database-diagram.drawio.bkp
+database-diagram.drawio
+Cargo.lock

@@ -1,36 +1,42 @@
-mod block;
-mod blockchain;
-mod transaction;
-// use block::Block;
-use blockchain::Blockchain;
-use crate::transaction::Transaction;
+mod routes;
+mod database;
+mod services;
+mod models;
+mod utils;
+mod middlewares;
 
-fn main() {
+use axum::Router;
+use middlewares::auth::AppState;
+use tower_http::cors::{CorsLayer, Any};
+use tokio::net::TcpListener;
+use std::sync::Arc;
 
-    // let mut my_blockchain = Blockchain::new(4);
-    let mut my_blockchain = Blockchain::load_from_file("blockchain.json");
-    println!("Loaded chain length: {}", my_blockchain.chain.len());
+use routes::{protected_user_routes, public_user_routes};
+use database::connect_db;
 
-    my_blockchain.add_transaction(Transaction {
-        from: "Alice".to_string(),
-        to: "Bob".to_string(),
-        amount: 70.0,
-    });
+#[tokio::main]
+async fn main() {
 
-    my_blockchain.add_transaction(Transaction {
-        from: "Bob".to_string(),
-        to: "Charlie".to_string(),
-        amount: 25.0,
-    });
+    let pool = connect_db().await;
 
-    my_blockchain.mine_pendding_transaction();
+    let state = Arc::new(
+        AppState { 
+            db: pool
+        }
+    );
 
-    my_blockchain.save_to_file("blockchain.json");
+    let cors = CorsLayer::new()
+        .allow_origin(Any)
+        .allow_methods(Any);
 
-    println!("Blockchain is valid? {}", my_blockchain.is_valid());
+    let app = Router::new()
+        .merge(public_user_routes())
+        .merge(protected_user_routes(state.clone()))
+        .layer(cors)
+        .with_state(state.clone());
 
-    println!("Balance of KhiemGia: {}", my_blockchain.get_balance("KhiemGia"));
-    println!("Balance of Alice: {}", my_blockchain.get_balance("Alice"));
-    println!("Balance of Bob: {}", my_blockchain.get_balance("Bob"));
-    
+    let listener = TcpListener::bind("127.0.0.1:3000").await.unwrap();
+    println!("🚀 Server running at http://127.0.0.1:3000");
+
+    axum::serve(listener, app).await.unwrap();
 }
