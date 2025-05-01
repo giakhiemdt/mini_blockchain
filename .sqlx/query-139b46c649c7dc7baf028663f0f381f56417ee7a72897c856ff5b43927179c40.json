@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n        DELETE FROM Jwts WHERE user_id = ?\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 1
+    },
+    "nullable": []
+  },
+  "hash": "139b46c649c7dc7baf028663f0f381f56417ee7a72897c856ff5b43927179c40"
+}

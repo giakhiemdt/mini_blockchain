@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n        INSERT INTO Jwts (user_id, token, exp)\n        VALUES (?, ?, ?)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 3
+    },
+    "nullable": []
+  },
+  "hash": "a948c7649253bfbb75d2d9bccddd3961d05d5e5f76fd30c31a005f744020bbe4"
+}

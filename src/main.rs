@@ -1,5 +1,5 @@
 mod routes;
-mod database;
+mod db;
 mod services;
 mod models;
 mod utils;
@@ -10,12 +10,17 @@ use middlewares::auth::AppState;
 use tower_http::cors::{CorsLayer, Any};
 use tokio::net::TcpListener;
 use std::sync::Arc;
+use tracing_subscriber;
 
-use routes::{protected_user_routes, public_user_routes};
-use database::connect_db;
+use routes::{
+    protected_auth_routes, protected_user_routes, protected_wallet_routes, public_auth_routes, transaction_routes::protected_transaction_routes
+};
+use db::database::connect_db;
 
 #[tokio::main]
 async fn main() {
+
+    tracing_subscriber::fmt::init();
 
     let pool = connect_db().await;
 
@@ -30,8 +35,11 @@ async fn main() {
         .allow_methods(Any);
 
     let app = Router::new()
-        .merge(public_user_routes())
+        .merge(public_auth_routes())
+        .merge(protected_auth_routes(state.clone()))
         .merge(protected_user_routes(state.clone()))
+        .merge(protected_wallet_routes(state.clone()))
+        .merge(protected_transaction_routes(state.clone()))
         .layer(cors)
         .with_state(state.clone());
 

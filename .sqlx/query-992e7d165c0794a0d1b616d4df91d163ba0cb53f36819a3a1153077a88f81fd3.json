@@ -1,0 +1,12 @@
+{
+  "db_name": "MySQL",
+  "query": "\n        INSERT INTO Wallets (user_id, name, address, public_key)\n        VALUES (?, ?, ?, ?)\n        ",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Right": 4
+    },
+    "nullable": []
+  },
+  "hash": "992e7d165c0794a0d1b616d4df91d163ba0cb53f36819a3a1153077a88f81fd3"
+}

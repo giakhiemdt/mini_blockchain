@@ -1,0 +1,54 @@
+{
+  "db_name": "MySQL",
+  "query": "\n        SELECT name, balance, created_at, address FROM Wallets WHERE id = ? AND user_id = ?\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "max_size": 1020
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "balance",
+        "type_info": {
+          "type": "NewDecimal",
+          "flags": "NOT_NULL",
+          "max_size": 20
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "created_at",
+        "type_info": {
+          "type": "Timestamp",
+          "flags": "BINARY | TIMESTAMP",
+          "max_size": 19
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "address",
+        "type_info": {
+          "type": "VarString",
+          "flags": "NOT_NULL | NO_DEFAULT_VALUE",
+          "max_size": 1020
+        }
+      }
+    ],
+    "parameters": {
+      "Right": 2
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "30f49bf3ee972207f1245f780b7cdeb5582574465a7f864b71d026cac3c143ff"
+}

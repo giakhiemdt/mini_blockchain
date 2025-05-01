@@ -12,27 +12,16 @@ use crate::models::auth::{
 };
 use crate::models::response_basic::ResponseModel; 
 use crate::utils::jwt::create_jwt;
+use crate::db::repo::{user_repo, jwt_repo};
 
 pub async fn register(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<UserRegisterRequest>,
-) -> Result<(StatusCode, impl IntoResponse), (StatusCode, impl IntoResponse)> {
+) -> impl IntoResponse {
 
     let pool = &state.db;
 
-    let result = sqlx::query!(
-        r#"
-        INSERT INTO Users (name, email, password)
-        VALUES (?, ?, ?)
-        "#,
-        payload.name,
-        payload.email,
-        payload.password,
-    )
-    .execute(pool)
-    .await;
-
-    match result {
+    match user_repo::insert_new_user(pool, &payload.name, &payload.email, &payload.password).await {
         Ok(_) => {
             Ok((StatusCode::OK,
                 Json(ResponseModel::<()> {
@@ -48,7 +37,7 @@ pub async fn register(
                 Json(ResponseModel::<()> {
                     is_success: false,
                     result: None,
-                    message: "Không thể tạo user".to_string(),
+                    message: "Register failed!".to_string(),
                 })
             ))
         }
@@ -59,23 +48,12 @@ pub async fn register(
 pub async fn login(
     State(state): State<Arc<AppState>>,
     Json(payload): Json<UserLoginRequest>,
-) -> Result<(StatusCode, impl IntoResponse), (StatusCode, impl IntoResponse)> {
+) -> impl IntoResponse {
 
     let pool = &state.db;
 
-    let user = sqlx::query!(
-        r#"
-        SELECT id, name, email, role FROM Users WHERE name = ? AND password = ?
-        "#,
-        payload.name,
-        payload.password,
-    )
-    .fetch_optional(pool) 
-    .await;
-
-    match user {
-        Ok(Some(user)) => {
-
+    match user_repo::find_user_by_username_and_password(pool, &payload.name, &payload.password).await {
+        Ok(user) => {
             let response = UserLoginResponse {
                 name: user.name,
                 token: create_jwt(
@@ -85,20 +63,11 @@ pub async fn login(
                     pool.clone()
                 ).await,
             };
-
             Ok((StatusCode::OK,
                 Json(ResponseModel::<UserLoginResponse> {
                     is_success: true,
                     result: Some(response), 
                     message: "Login successful!".to_string(),
-                })))
-        },
-        Ok(None) => {
-            Err((StatusCode::UNAUTHORIZED, 
-                Json(ResponseModel::<()> {
-                    is_success: false,
-                    result: None,
-                    message: "Invalid credentials".to_string(),
                 })))
         },
         Err(err) => {
@@ -116,26 +85,17 @@ pub async fn login(
 pub async fn logout(
     State(state): State<Arc<AppState>>,
     Extension(claims): Extension<Claims>,
-) -> Result<(StatusCode, impl IntoResponse), (StatusCode, impl IntoResponse)> {
+) -> impl IntoResponse {
 
     let pool = &state.db;
 
-    let result = sqlx::query!(
-        r#"
-        DELETE FROM Jwts WHERE user_id = ?
-        "#,
-        claims.sub
-    )
-    .fetch_optional(pool) 
-    .await;
-
-    match result {
+    match jwt_repo::delete_jwt(pool, &claims.sub).await {
         Ok(_) => {
             Ok((StatusCode::OK, 
                 Json(ResponseModel::<()> {
                     is_success: true,
                     result: None,
-                    message: "Đăng xuất thành công!".to_string(),
+                    message: "Logout successful!".to_string(),
                 })
             ))
         },
@@ -144,7 +104,7 @@ pub async fn logout(
                 Json(ResponseModel::<()> {
                     is_success: false,
                     result: None,
-                    message: "Lỗi khi đăng xuất.".to_string(),
+                    message: "Logout failed!".to_string(),
                 })
             ))
         }
