@@ -72,8 +72,6 @@ pub async fn create_transaction(
         }
     };
         
-        
-
     let tx_data = format!(
         "{}{}{}{}", 
         payload.tx_data.sender_wallet_address, 
@@ -130,47 +128,37 @@ pub fn verify_signature(
     info!("signature_hex: {}", signature_hex);
     info!("tx_data: {}", tx_data);
 
-
-    // 1. Băm tx_data -> lấy tx_hash
     let mut hasher = Keccak256::new();
     hasher.update(tx_data.as_bytes());
     let tx_hash_bytes = hasher.finalize();
     
-    // 2. Chuyển Keccak256 output thành [u8; 32]
     let tx_hash: [u8; 32] = tx_hash_bytes.into();
     
-    // 3. Decode public_key và signature từ hex
     info!("public_key_hex length: {}", public_key_hex.len());
     
-    // Kiểm tra và xử lý public key có 65 bytes (nếu có thêm 0x04)
     let mut public_key_bytes = Vec::<u8>::from_hex(public_key_hex).unwrap();
     
-    // Nếu public_key không có prefix 0x04, thêm vào
     if public_key_bytes.len() == 64 {
-        let mut full_key = vec![0x04]; // Uncompressed key bắt đầu với 0x04
+        let mut full_key = vec![0x04]; 
         full_key.extend(public_key_bytes);
-        public_key_bytes = full_key; // Gán lại public key đầy đủ
+        public_key_bytes = full_key; 
     }
     
     info!("public_key_bytes length: {}", public_key_bytes.len());
     
-    // Kiểm tra độ dài của public_key_bytes
     assert_eq!(public_key_bytes.len(), 65, "Public key phải có 65 bytes");
     
     let public_key = PublicKey::from_slice(&public_key_bytes).unwrap();
     
-    // 4. Decode signature từ hex
     let signature_bytes = Vec::<u8>::from_hex(signature_hex).unwrap();
     let signature = Signature::from_compact(&signature_bytes).unwrap();
     
     info!("Signature decoded");
     
-    // 5. Verify signature
     let secp = Secp256k1::new();
     let message = Message::from_digest(tx_hash);
     let is_valid = secp.verify_ecdsa(message, &signature, &public_key).is_ok();
-    
-    // 6. Encode tx_hash thành hex để trả về
+
     let tx_hash_hex = tx_hash.encode_hex::<String>();
     
     (is_valid, tx_hash_hex)

@@ -3,6 +3,7 @@ use jsonwebtoken::{decode, encode, DecodingKey, EncodingKey, Header, Validation}
 use sqlx::{MySql, Pool};
 use std::env;
 use crate::models::jwt::Claims;
+use crate::db::repo::jwt_repo;
 
 pub async fn create_jwt(
     user_id: &str, 
@@ -31,21 +32,8 @@ pub async fn create_jwt(
 
     let naive_exp = expiration_time.naive_utc();
 
-    let result = sqlx::query!(
-        r#"
-        INSERT INTO Jwts (user_id, token, exp)
-        VALUES (?, ?, ?)
-        "#,
-        user_id,
-        token,
-        naive_exp,
-    )
-    .execute(&pool)
-    .await;
-
-    if let Err(err) = result {
-        eprintln!("❌ Lỗi khi lưu JWT vào database: {:?}", err);
-    }
+    jwt_repo::create_jwt(&pool, user_id, token.clone(), naive_exp)
+    .await.expect("Không thể lưu JWT vào cơ sở dữ liệu");
 
     token
 }
@@ -62,28 +50,16 @@ pub async fn validate_jwt(
         &DecodingKey::from_secret(secret_key.as_bytes()),
         &Validation::default(),
     )
-    .map_err(|_| "Token không hợp lệ hoặc đã hết hạn".to_string())?;
+    .map_err(|_| "Invalid token or exprired!".to_string())?;
 
     let claims = decoded.claims;
 
-    let token_record = sqlx::query!(
-        r#"
-        SELECT id, user_id, exp FROM Jwts WHERE token = ?
-        "#,
-        token
-    )
-    .fetch_optional(&pool)
-    .await
-    .map_err(|_| "Lỗi truy vấn database khi kiểm tra token".to_string())?;
-
-    let record = match token_record {
-        Some(r) => r,
-        None => return Err("Token không tồn tại hoặc đã bị thu hồi".to_string()),
-    };
+    let record = jwt_repo::find_token_by_token(&pool, token.to_string())
+        .await.expect("Failed to find token in database!");
 
     let now = Utc::now().naive_utc();
     if record.exp < now {
-        return Err("Token đã hết hạn".to_string());
+        return Err("Token exprired!".to_string());
     }
 
     Ok(claims)

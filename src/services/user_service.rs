@@ -7,7 +7,7 @@ use axum::http::StatusCode;
 use crate::middlewares::auth::AppState;
 use crate::models::jwt::Claims;
 use crate::models::response_basic::ResponseModel; 
-use crate::models::user::UserInformation;
+use crate::models::user::{UserInformationResponse, UpdateUserInformationRequest};
 use crate::db::repo::user_repo;
 
 pub async fn get_me(
@@ -19,7 +19,7 @@ pub async fn get_me(
 
     match  user_repo::find_user_by_id(pool, &claims.sub).await {
         Ok(user) => {
-            let response = UserInformation {
+            let response = UserInformationResponse {
                 name: user.name,
                 email: user.email,
                 profile_pic_url: user.profile_pic_url,
@@ -29,9 +29,44 @@ pub async fn get_me(
             };
 
             Ok((StatusCode::OK, 
-                Json(ResponseModel::<UserInformation> {
+                Json(ResponseModel::<UserInformationResponse> {
                     is_success: true,
                     result: Some(response),
+                    message: "Successful!".to_string(),
+                })
+            ))
+        },
+        Err(_) => {
+            Err((StatusCode::INTERNAL_SERVER_ERROR,
+                Json(ResponseModel::<()> {
+                    is_success: false,
+                    result: None,
+                    message: "Invalid user id!".to_string(),
+                })
+            ))
+        }
+    }
+
+}
+
+pub async fn update_information(
+    State(state): State<Arc<AppState>>,
+    Extension(claims): Extension<Claims>,
+    Json(payload): Json<UpdateUserInformationRequest>
+) -> impl IntoResponse {
+
+    let pool = &state.db;
+
+    match  user_repo::update_user_information(
+            pool, &claims.sub, payload.email.as_deref(),
+            payload.password.as_deref(), payload.profile_pic_url.as_deref(),
+            None, payload.is_active, payload.is_verified.as_deref()
+        ).await {
+        Ok(_) => {
+            Ok((StatusCode::OK, 
+                Json(ResponseModel::<()> {
+                    is_success: true,
+                    result: None,
                     message: "Successful!".to_string(),
                 })
             ))
